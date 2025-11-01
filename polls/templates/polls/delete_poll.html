@@ -1,0 +1,40 @@
+{% extends 'polls/base.html' %}
+
+{% block title %}Delete Poll{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow border-danger">
+            <div class="card-body text-center">
+                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 4rem;"></i>
+                <h2 class="card-title mt-3 mb-4">Delete Poll?</h2>
+                
+                <div class="alert alert-danger text-start">
+                    <strong>Poll:</strong> {{ poll.question }}
+                    <br>
+                    <strong>Total Votes:</strong> {{ poll.total_votes }}
+                    <br>
+                    <strong>Created:</strong> {{ poll.created_at|date:"M d, Y" }}
+                </div>
+
+                <p class="text-muted mb-4">
+                    This action cannot be undone. All votes and data will be permanently deleted.
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-trash"></i> Yes, Delete Poll
+                        </button>
+                        <a href="{% url 'admin_results' poll.admin_token %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

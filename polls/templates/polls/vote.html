@@ -1,0 +1,73 @@
+{% extends 'polls/base.html' %}
+
+{% block title %}{{ poll.question }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <h2 class="card-title mb-4">{{ poll.question }}</h2>
+                
+                {% if poll.description %}
+                <div class="alert alert-light mb-4">
+                    <p class="mb-0">{{ poll.description|linebreaks }}</p>
+                </div>
+                {% endif %}
+                
+                <form method="post" action="{% url 'vote' poll.slug %}">
+                    {% csrf_token %}
+                    
+                    {% if not poll.is_anonymous %}
+                    <div class="mb-4">
+                        <label for="voter_name" class="form-label">Your Name</label>
+                        <input type="text" class="form-control" id="voter_name" name="voter_name" required placeholder="Enter your name">
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <label class="form-label">Choose your answer{{ poll.allow_multiple_choices|yesno:"(s)," }}:</label>
+                        
+                        {% for choice in poll.choices.all %}
+                        <div class="form-check mb-2">
+                            {% if poll.allow_multiple_choices %}
+                            <input class="form-check-input" type="checkbox" name="choices" value="{{ choice.id }}" id="choice{{ choice.id }}">
+                            {% else %}
+                            <input class="form-check-input" type="radio" name="choices" value="{{ choice.id }}" id="choice{{ choice.id }}" required>
+                            {% endif %}
+                            <label class="form-check-label" for="choice{{ choice.id }}">
+                                {{ choice.choice_text }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitVote">
+                            <i class="bi bi-check-circle"></i> Submit Vote
+                        </button>
+                        
+                        {% if poll.public_results %}
+                        <a href="{% url 'public_results' poll.slug %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-graph-up"></i> View Results
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if poll.allow_multiple_choices %}
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    const checkboxes = document.querySelectorAll('input[name="choices"]:checked');
+    if (checkboxes.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one choice.');
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

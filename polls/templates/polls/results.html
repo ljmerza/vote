@@ -1,0 +1,187 @@
+{% extends 'polls/base.html' %}
+
+{% block title %}Results - {{ poll.question }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-body">
+                <h2 class="card-title mb-2">{{ poll.question }}</h2>
+                
+                {% if poll.description %}
+                <div class="alert alert-light mb-3">
+                    <p class="mb-0">{{ poll.description|linebreaks }}</p>
+                </div>
+                {% endif %}
+                
+                {% if is_admin %}
+                <div class="alert alert-warning mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-shield-check"></i> Admin View</span>
+                        <div>
+                            {% if total_votes == 0 %}
+                            <a href="{% url 'edit_poll' poll.admin_token %}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'delete_poll' poll.admin_token %}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <p class="text-muted mb-4">
+                    Total Votes: <strong>{{ total_votes }}</strong> | 
+                    Created: {{ poll.created_at|date:"M d, Y g:i A" }}
+                    {% if not is_admin %}
+                    <button class="btn btn-sm btn-outline-primary ms-3" onclick="shareLink()">
+                        <i class="bi bi-share"></i> Copy Link
+                    </button>
+                    <a href="mailto:?subject=Check out this poll: {{ poll.question|urlencode }}&body=Check out the results of this poll:%0A%0A{{ poll.question|urlencode }}%0A%0AVote here: {{ request.build_absolute_uri }}" class="btn btn-sm btn-success ms-2">
+                        <i class="bi bi-envelope"></i> Email
+                    </a>
+                    {% endif %}
+                </p>
+
+                {% if total_votes == 0 %}
+                <div class="alert alert-info text-center py-4">
+                    <i class="bi bi-info-circle" style="font-size: 2rem;"></i>
+                    <h5 class="mt-2">No votes yet!</h5>
+                    <p class="mb-0">Be the first to vote on this poll.</p>
+                    {% if not is_admin %}
+                    <a href="{% url 'vote_page' poll.slug %}" class="btn btn-primary mt-3">
+                        <i class="bi bi-hand-index"></i> Vote Now
+                    </a>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="mb-4">
+                    {% for choice in results %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><strong>{{ choice.choice_text }}</strong></span>
+                            <span class="text-muted">{{ choice.votes }} vote{{ choice.votes|pluralize }} ({{ choice.percentage }}%)</span>
+                        </div>
+                        <div class="progress" style="height: 30px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ choice.percentage }}%;" 
+                                 aria-valuenow="{{ choice.percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ choice.percentage }}%
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <canvas id="resultsChart" style="max-height: 400px;"></canvas>
+                {% endif %}
+
+                {% if is_admin and not poll.is_anonymous and voters %}
+                <hr>
+                <h4 class="mb-3">Voter Details</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Voter Name</th>
+                                <th>Choice</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vote in voters %}
+                            <tr>
+                                <td>{{ vote.voter_name|default:"Anonymous" }}</td>
+                                <td>{{ vote.choice.choice_text }}</td>
+                                <td>{{ vote.voted_at|date:"M d, Y g:i A" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <div class="d-grid gap-2 mt-4">
+                    {% if not is_admin %}
+                    <a href="{% url 'vote_page' poll.slug %}" class="btn btn-primary">
+                        <i class="bi bi-arrow-left"></i> Back to Poll
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'create_poll' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-plus-circle"></i> Create Your Own Poll
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    function shareLink() {
+        const url = window.location.origin + "{% url 'vote_page' poll.slug %}";
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Poll link copied to clipboard!');
+            }).catch((err) => {
+                // Fallback: create temporary input
+                const temp = document.createElement('input');
+                temp.value = url;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand('copy');
+                document.body.removeChild(temp);
+                alert('Poll link copied to clipboard!');
+            });
+        } else {
+            // Fallback for older browsers
+            const temp = document.createElement('input');
+            temp.value = url;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            alert('Poll link copied to clipboard!');
+        }
+    }
+
+    {% if total_votes > 0 %}
+    const ctx = document.getElementById('resultsChart');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [{% for choice in results %}'{{ choice.choice_text|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Votes',
+                data: [{% for choice in results %}{{ choice.votes }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: 'rgba(13, 110, 253, 0.8)',
+                borderColor: 'rgba(13, 110, 253, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

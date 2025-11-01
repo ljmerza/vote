@@ -1,0 +1,93 @@
+{% extends 'polls/base.html' %}
+
+{% block title %}Poll Created!{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                <h2 class="card-title mt-3 mb-4">Poll Created Successfully!</h2>
+                
+                <div class="alert alert-info">
+                    <strong>{{ poll.question }}</strong>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="mb-3">Share this voting link:</h5>
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control" id="votingLink" value="{{ voting_url }}" readonly>
+                        <button class="btn btn-primary" onclick="copyToClipboard('votingLink')">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="mb-3">Your admin link (keep private):</h5>
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control" id="adminLink" value="{{ admin_url }}" readonly>
+                        <button class="btn btn-warning" onclick="copyToClipboard('adminLink')">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                    <small class="text-muted">Use this link to view results</small>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <a href="{{ voting_url }}" class="btn btn-primary">
+                        <i class="bi bi-bar-chart"></i> Go to Poll
+                    </a>
+                    <a href="mailto:?subject=Vote on my poll: {{ poll.question|urlencode }}&body=Hi! I'd like you to vote on my poll:%0A%0A{{ poll.question|urlencode }}%0A%0AVote here: {{ voting_url }}" class="btn btn-success">
+                        <i class="bi bi-envelope"></i> Share via Email
+                    </a>
+                    <a href="{% url 'create_poll' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-plus-circle"></i> Create Another Poll
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyToClipboard(elementId) {
+        const input = document.getElementById(elementId);
+        input.select();
+        input.setSelectionRange(0, 99999);
+        
+        // Try modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(input.value).then(() => {
+                showCopiedFeedback(input);
+            }).catch(() => {
+                // Fallback to old method
+                document.execCommand('copy');
+                showCopiedFeedback(input);
+            });
+        } else {
+            // Fallback for older browsers
+            document.execCommand('copy');
+            showCopiedFeedback(input);
+        }
+    }
+    
+    function showCopiedFeedback(input) {
+        const button = input.nextElementSibling;
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        button.classList.add('btn-success');
+        button.classList.remove('btn-primary', 'btn-warning');
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
+            if (originalHTML.includes('clipboard')) {
+                button.classList.add(input.id === 'votingLink' ? 'btn-primary' : 'btn-warning');
+            }
+        }, 2000);
+    }
+</script>
+{% endblock %}

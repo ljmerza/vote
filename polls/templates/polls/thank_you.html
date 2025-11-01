@@ -1,0 +1,34 @@
+{% extends 'polls/base.html' %}
+
+{% block title %}Thank You for Voting!{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                <h2 class="card-title mt-3 mb-4">Thank You for Voting!</h2>
+                
+                <p class="lead">Your vote has been recorded.</p>
+
+                <div class="d-grid gap-2 mt-4">
+                    {% if poll.public_results %}
+                    <a href="{% url 'public_results' poll.slug %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-graph-up"></i> View Results
+                    </a>
+                    {% endif %}
+                    
+                    <a href="mailto:?subject=Vote on this poll: {{ poll.question|urlencode }}&body=I'd like you to vote on this poll:%0A%0A{{ poll.question|urlencode }}{% if poll.description %}%0A%0A{{ poll.description|urlencode }}{% endif %}%0A%0AVote here: {{ request.build_absolute_uri }}" class="btn btn-success">
+                        <i class="bi bi-envelope"></i> Share via Email
+                    </a>
+                    
+                    <a href="{% url 'create_poll' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-plus-circle"></i> Create Your Own Poll
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

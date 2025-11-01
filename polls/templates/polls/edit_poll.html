@@ -1,0 +1,130 @@
+{% extends 'polls/base.html' %}
+
+{% block title %}Edit Poll{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <h2 class="card-title mb-4">Edit Poll</h2>
+                <p class="text-muted mb-4">Modify your poll details</p>
+                
+                <form method="post" id="editPollForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="question" class="form-label">Poll Question</label>
+                        <input type="text" class="form-control" id="question" name="question" required maxlength="500" value="{{ poll.question }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ poll.description }}</textarea>
+                        <small class="text-muted">This will be displayed below the question</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Answer Choices</label>
+                        <div id="choices">
+                            {% for choice in poll.choices.all %}
+                            <div class="input-group mb-2 choice-input">
+                                <input type="hidden" name="choice_ids[]" value="{{ choice.id }}">
+                                <input type="text" class="form-control" name="choices[]" required value="{{ choice.choice_text }}">
+                                <button class="btn btn-outline-danger remove-choice" type="button">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="addChoice">
+                            <i class="bi bi-plus-circle"></i> Add Choice
+                        </button>
+                    </div>
+
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title">Poll Settings</h6>
+                            
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="allow_multiple_choices" name="allow_multiple_choices" {% if poll.allow_multiple_choices %}checked{% endif %}>
+                                <label class="form-check-label" for="allow_multiple_choices">
+                                    Allow multiple choice selection
+                                </label>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="is_anonymous" name="is_anonymous" {% if poll.is_anonymous %}checked{% endif %}>
+                                <label class="form-check-label" for="is_anonymous">
+                                    Anonymous voting (hide voter names)
+                                </label>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="public_results" name="public_results" {% if poll.public_results %}checked{% endif %}>
+                                <label class="form-check-label" for="public_results">
+                                    Make results public (anyone can view)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-save"></i> Save Changes
+                        </button>
+                        <a href="{% url 'admin_results' poll.admin_token %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let choiceCount = {{ poll.choices.count }};
+
+    document.getElementById('addChoice').addEventListener('click', function() {
+        choiceCount++;
+        const choicesDiv = document.getElementById('choices');
+        const newChoice = document.createElement('div');
+        newChoice.className = 'input-group mb-2 choice-input';
+        newChoice.innerHTML = `
+            <input type="hidden" name="choice_ids[]" value="">
+            <input type="text" class="form-control" name="choices[]" required placeholder="Choice ${choiceCount}">
+            <button class="btn btn-outline-danger remove-choice" type="button">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        choicesDiv.appendChild(newChoice);
+        updateRemoveButtons();
+    });
+
+    document.getElementById('choices').addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-choice') || e.target.closest('.remove-choice')) {
+            const button = e.target.classList.contains('remove-choice') ? e.target : e.target.closest('.remove-choice');
+            button.closest('.choice-input').remove();
+            updateRemoveButtons();
+        }
+    });
+
+    function updateRemoveButtons() {
+        const choices = document.querySelectorAll('.choice-input');
+        choices.forEach((choice, index) => {
+            const removeBtn = choice.querySelector('.remove-choice');
+            if (choices.length > 2) {
+                removeBtn.style.display = 'block';
+            } else {
+                removeBtn.style.display = 'none';
+            }
+        });
+    }
+
+    // Initialize button visibility
+    updateRemoveButtons();
+</script>
+{% endblock %}
