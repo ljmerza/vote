@@ -1,32 +1,40 @@
 {% extends 'polls/base.html' %}
 
-{% block title %}Delete Poll{% endblock %}
+{% block title %}{% if poll.is_soft_deleted %}Restore or Delete Poll{% else %}Delete Poll{% endif %}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <div class="card shadow border-danger">
+        {% if poll.is_soft_deleted %}
+        <div class="card shadow border-warning">
             <div class="card-body text-center">
-                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 4rem;"></i>
-                <h2 class="card-title mt-3 mb-4">Delete Poll?</h2>
-                
-                <div class="alert alert-danger text-start">
+                <i class="bi bi-info-circle-fill text-warning" style="font-size: 4rem;"></i>
+                <h2 class="card-title mt-3 mb-4">Poll Already Soft-Deleted</h2>
+
+                <div class="alert alert-warning text-start">
                     <strong>Poll:</strong> {{ poll.question }}
                     <br>
                     <strong>Total Votes:</strong> {{ poll.total_votes }}
                     <br>
                     <strong>Created:</strong> {{ poll.created_at|date:"M d, Y" }}
+                    <br>
+                    <strong>Deleted:</strong> {{ poll.deleted_at|date:"M d, Y" }}
+                    <br>
+                    <strong>Permanent deletion in:</strong> {{ poll.days_until_permanent_deletion }} days
                 </div>
 
                 <p class="text-muted mb-4">
-                    This action cannot be undone. All votes and data will be permanently deleted.
+                    This poll is scheduled for permanent deletion. You can restore it or delete it immediately.
                 </p>
 
                 <form method="post">
                     {% csrf_token %}
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-danger btn-lg">
-                            <i class="bi bi-trash"></i> Yes, Delete Poll
+                        <button type="submit" name="action" value="restore" class="btn btn-success btn-lg">
+                            <i class="bi bi-arrow-counterclockwise"></i> Restore Poll
+                        </button>
+                        <button type="submit" name="action" value="hard_delete" class="btn btn-danger">
+                            <i class="bi bi-trash-fill"></i> Delete Permanently Now
                         </button>
                         <a href="{% url 'admin_results' poll.admin_token %}" class="btn btn-outline-secondary">
                             <i class="bi bi-x-circle"></i> Cancel
@@ -35,6 +43,41 @@
                 </form>
             </div>
         </div>
+        {% else %}
+        <div class="card shadow border-danger">
+            <div class="card-body text-center">
+                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 4rem;"></i>
+                <h2 class="card-title mt-3 mb-4">Delete Poll?</h2>
+
+                <div class="alert alert-danger text-start">
+                    <strong>Poll:</strong> {{ poll.question }}
+                    <br>
+                    <strong>Total Votes:</strong> {{ poll.total_votes }}
+                    <br>
+                    <strong>Created:</strong> {{ poll.created_at|date:"M d, Y" }}
+                </div>
+
+                <div class="alert alert-info text-start">
+                    <i class="bi bi-info-circle"></i> <strong>Soft Delete:</strong> The poll will be hidden but kept for 30 days before permanent deletion. You can restore it within this period.
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" name="action" value="soft_delete" class="btn btn-warning btn-lg">
+                            <i class="bi bi-archive"></i> Delete Poll (30-day grace period)
+                        </button>
+                        <button type="submit" name="action" value="hard_delete" class="btn btn-danger" onclick="return confirm('Are you sure? This will PERMANENTLY delete all data immediately!')">
+                            <i class="bi bi-trash-fill"></i> Delete Permanently Now
+                        </button>
+                        <a href="{% url 'admin_results' poll.admin_token %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

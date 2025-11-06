@@ -33,6 +33,19 @@
                 </div>
                 {% endif %}
 
+                {% if poll.expires_at %}
+                <div class="alert {% if poll.is_expired %}alert-danger{% elif poll.days_until_expiration <= 7 %}alert-warning{% else %}alert-info{% endif %} mb-3">
+                    <i class="bi bi-clock-history"></i>
+                    {% if poll.is_expired %}
+                        <strong>Expired:</strong> This poll expired on {{ poll.expires_at|date:"M d, Y g:i A" }} and is no longer accepting votes.
+                    {% elif poll.days_until_expiration <= 7 %}
+                        <strong>Expiring Soon:</strong> This poll will expire in {{ poll.days_until_expiration }} day{{ poll.days_until_expiration|pluralize }} ({{ poll.expires_at|date:"M d, Y g:i A" }}).
+                    {% else %}
+                        <strong>Expires:</strong> {{ poll.expires_at|date:"M d, Y g:i A" }} (in {{ poll.days_until_expiration }} days)
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <p class="text-muted mb-4">
                     Total Votes: <strong>{{ total_votes }}</strong> | 
                     Created: {{ poll.created_at|date:"M d, Y g:i A" }}

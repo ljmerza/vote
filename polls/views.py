@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
 from .models import Poll, Choice, Vote
 import secrets
 
@@ -35,19 +37,30 @@ def create_poll(request):
         allow_multiple = request.POST.get('allow_multiple_choices') == 'on'
         is_anonymous = request.POST.get('is_anonymous') == 'on'
         public_results = request.POST.get('public_results') == 'on'
-        
+        expiration_days = request.POST.get('expiration_days', '90')
+
         choices_list = [c.strip() for c in choices_list if c.strip()]
-        
+
         if len(choices_list) < 2:
             messages.error(request, 'Please provide at least 2 choices.')
             return redirect('create_poll')
-        
+
+        # Calculate expiration date
+        expires_at = None
+        if expiration_days != 'never':
+            try:
+                days = int(expiration_days)
+                expires_at = timezone.now() + timedelta(days=days)
+            except ValueError:
+                expires_at = timezone.now() + timedelta(days=90)  # Default to 90 days
+
         poll = Poll.objects.create(
             question=question,
             description=description if description else None,
             allow_multiple_choices=allow_multiple,
             is_anonymous=is_anonymous,
-            public_results=public_results
+            public_results=public_results,
+            expires_at=expires_at
         )
         
         for choice_text in choices_list:
@@ -65,7 +78,12 @@ def create_poll(request):
     return render(request, 'polls/create_poll.html')
 
 def vote_page(request, slug):
-    poll = get_object_or_404(Poll, slug=slug)
+    poll = get_object_or_404(Poll.active_objects, slug=slug)
+
+    # Check if poll is expired
+    if poll.is_expired:
+        messages.error(request, 'This poll has expired and is no longer accepting votes.')
+        return redirect('create_poll')
 
     if has_already_voted(request, poll):
         return render(request, 'polls/already_voted.html', {'poll': poll})
@@ -76,7 +94,12 @@ def vote(request, slug):
     if request.method != 'POST':
         return redirect('vote_page', slug=slug)
 
-    poll = get_object_or_404(Poll, slug=slug)
+    poll = get_object_or_404(Poll.active_objects, slug=slug)
+
+    # Check if poll is expired
+    if poll.is_expired:
+        messages.error(request, 'This poll has expired and is no longer accepting votes.')
+        return redirect('create_poll')
 
     if has_already_voted(request, poll):
         return render(request, 'polls/already_voted.html', {'poll': poll})
@@ -125,12 +148,12 @@ def vote(request, slug):
     return response
 
 def public_results(request, slug):
-    poll = get_object_or_404(Poll, slug=slug)
-    
+    poll = get_object_or_404(Poll.active_objects, slug=slug)
+
     if not poll.public_results:
         messages.error(request, 'Results for this poll are private.')
         return redirect('vote_page', slug=slug)
-    
+
     return render_results(request, poll, is_admin=False)
 
 def admin_results(request, admin_token):
@@ -214,12 +237,24 @@ def edit_poll(request, admin_token):
 
 def delete_poll(request, admin_token):
     poll = get_object_or_404(Poll, admin_token=admin_token)
-    
+
     if request.method == 'POST':
-        poll_question = poll.question
-        poll.delete()
-        messages.success(request, f'Poll "{poll_question}" has been deleted.')
-        return redirect('create_poll')
-    
+        action = request.POST.get('action', 'soft_delete')
+
+        if action == 'restore' and poll.is_soft_deleted:
+            poll.restore()
+            messages.success(request, f'Poll "{poll.question}" has been restored.')
+            return redirect('admin_results', admin_token=admin_token)
+        elif action == 'hard_delete':
+            poll_question = poll.question
+            poll.delete()
+            messages.success(request, f'Poll "{poll_question}" has been permanently deleted.')
+            return redirect('create_poll')
+        else:  # soft_delete
+            poll_question = poll.question
+            poll.soft_delete()
+            messages.success(request, f'Poll "{poll_question}" has been deleted. It will be permanently removed in 30 days.')
+            return redirect('create_poll')
+
     return render(request, 'polls/delete_poll.html', {'poll': poll})
 

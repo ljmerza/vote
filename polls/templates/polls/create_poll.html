@@ -48,7 +48,7 @@
                     <div class="card bg-light mb-3">
                         <div class="card-body">
                             <h6 class="card-title">Poll Settings</h6>
-                            
+
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" id="allow_multiple_choices" name="allow_multiple_choices">
                                 <label class="form-check-label" for="allow_multiple_choices">
@@ -68,6 +68,21 @@
                                 <label class="form-check-label" for="public_results">
                                     Make results public (anyone can view)
                                 </label>
+                            </div>
+
+                            <div class="mb-2 mt-3">
+                                <label for="expiration_days" class="form-label">
+                                    <i class="bi bi-clock"></i> Poll Expiration
+                                </label>
+                                <select class="form-select" id="expiration_days" name="expiration_days">
+                                    <option value="7">7 days</option>
+                                    <option value="30">30 days</option>
+                                    <option value="90" selected>90 days (default)</option>
+                                    <option value="180">180 days (6 months)</option>
+                                    <option value="365">365 days (1 year)</option>
+                                    <option value="never">Never expire</option>
+                                </select>
+                                <small class="text-muted">Poll will be automatically deleted after this period to prevent database growth</small>
                             </div>
                         </div>
                     </div>
