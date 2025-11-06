@@ -1,0 +1,31 @@
+{% extends 'polls/base.html' %}
+
+{% block title %}Already Voted{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body text-center">
+                <i class="bi bi-exclamation-circle-fill text-warning" style="font-size: 4rem;"></i>
+                <h2 class="card-title mt-3 mb-4">You Have Already Voted</h2>
+
+                <p class="lead">You have already submitted a vote for this poll.</p>
+                <p class="text-muted">Each person can only vote once per poll.</p>
+
+                <div class="d-grid gap-2 mt-4">
+                    {% if poll.public_results %}
+                    <a href="{% url 'public_results' poll.slug %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-graph-up"></i> View Results
+                    </a>
+                    {% endif %}
+
+                    <a href="{% url 'create_poll' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-plus-circle"></i> Create Your Own Poll
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

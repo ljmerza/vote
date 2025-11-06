@@ -41,6 +41,7 @@ class Vote(models.Model):
     choice = models.ForeignKey(Choice, on_delete=models.CASCADE, related_name='vote_records')
     voter_name = models.CharField(max_length=100, blank=True, null=True)
     ip_address = models.GenericIPAddressField()
+    cookie_token = models.CharField(max_length=64, blank=True, null=True, help_text="Browser cookie token to prevent duplicate votes")
     voted_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

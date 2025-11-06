@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse
 from .models import Poll, Choice, Vote
+import secrets
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -10,6 +11,21 @@ def get_client_ip(request):
     else:
         ip = request.META.get('REMOTE_ADDR')
     return ip
+
+def has_already_voted(request, poll):
+    """Check if user has already voted using cookie or IP address"""
+    # Check cookie first (more reliable for individual users)
+    vote_cookie = request.COOKIES.get(f'poll_voted_{poll.id}')
+    if vote_cookie:
+        if Vote.objects.filter(poll=poll, cookie_token=vote_cookie).exists():
+            return True
+
+    # Fallback to IP check (catches cases where cookie was cleared)
+    ip_address = get_client_ip(request)
+    if Vote.objects.filter(poll=poll, ip_address=ip_address).exists():
+        return True
+
+    return False
 
 def create_poll(request):
     if request.method == 'POST':
@@ -50,54 +66,63 @@ def create_poll(request):
 
 def vote_page(request, slug):
     poll = get_object_or_404(Poll, slug=slug)
-    
-    ip_address = get_client_ip(request)
-    if Vote.objects.filter(poll=poll, ip_address=ip_address).exists():
-        messages.warning(request, 'You have already voted on this poll.')
-        if poll.public_results:
-            return redirect('public_results', slug=slug)
-        return redirect('vote_page', slug=slug)
-    
+
+    if has_already_voted(request, poll):
+        return render(request, 'polls/already_voted.html', {'poll': poll})
+
     return render(request, 'polls/vote.html', {'poll': poll})
 
 def vote(request, slug):
     if request.method != 'POST':
         return redirect('vote_page', slug=slug)
-    
+
     poll = get_object_or_404(Poll, slug=slug)
+
+    if has_already_voted(request, poll):
+        return render(request, 'polls/already_voted.html', {'poll': poll})
+
     ip_address = get_client_ip(request)
-    
-    if Vote.objects.filter(poll=poll, ip_address=ip_address).exists():
-        messages.error(request, 'You have already voted on this poll.')
-        return redirect('vote_page', slug=slug)
-    
     voter_name = request.POST.get('voter_name', '').strip() if not poll.is_anonymous else None
-    
+
     if poll.allow_multiple_choices:
         choice_ids = request.POST.getlist('choices')
     else:
         choice_ids = [request.POST.get('choices')]
-    
+
     if not choice_ids or not any(choice_ids):
         messages.error(request, 'Please select at least one choice.')
         return redirect('vote_page', slug=slug)
-    
+
+    # Generate a unique cookie token for this vote
+    cookie_token = secrets.token_urlsafe(32)
+
     for choice_id in choice_ids:
         try:
             choice = Choice.objects.get(id=choice_id, poll=poll)
             choice.votes += 1
             choice.save()
-            
+
             Vote.objects.create(
                 poll=poll,
                 choice=choice,
                 voter_name=voter_name,
-                ip_address=ip_address
+                ip_address=ip_address,
+                cookie_token=cookie_token
             )
         except Choice.DoesNotExist:
             pass
-    
-    return render(request, 'polls/thank_you.html', {'poll': poll})
+
+    # Create response and set cookie
+    response = render(request, 'polls/thank_you.html', {'poll': poll})
+    # Cookie expires in 10 years (effectively permanent for a poll)
+    response.set_cookie(
+        f'poll_voted_{poll.id}',
+        cookie_token,
+        max_age=315360000,  # 10 years in seconds
+        httponly=True,
+        samesite='Lax'
+    )
+    return response
 
 def public_results(request, slug):
     poll = get_object_or_404(Poll, slug=slug)

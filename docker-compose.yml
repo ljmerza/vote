@@ -1,18 +1,12 @@
-version: '3.8'
-
 services:
   web:
     build: .
     container_name: vote-app
     ports:
-      - "8000:8000"
+      - "6243:8000"
     volumes:
-      - ./db.sqlite3:/app/db.sqlite3
-      - static_volume:/app/staticfiles
+      - .:/app
     environment:
       - DJANGO_SETTINGS_MODULE=voteproject.settings
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
-
-volumes:
-  static_volume:
